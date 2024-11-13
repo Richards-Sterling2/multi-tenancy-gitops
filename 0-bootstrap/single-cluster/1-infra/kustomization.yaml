@@ -37,7 +37,7 @@ resources:
   #- argocd/serviceaccounts-tools.yaml
   #- argocd/serviceaccounts-db2.yaml
   #- argocd/serviceaccounts-mq.yaml
-  # - argocd/serviceaccounts-b2bi-prod.yaml
+  - argocd/serviceaccounts-b2bi-prod.yaml
   #- argocd/serviceaccounts-b2bi-612.yaml
   #- argocd/serviceaccounts-b2bi-nonprod.yaml
   #- argocd/namespace-ssp.yaml
