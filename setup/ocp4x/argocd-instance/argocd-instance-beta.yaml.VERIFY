@@ -1,0 +1,303 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1beta1","kind":"ArgoCD","metadata":{"annotations":{},"name":"openshift-gitops-cntk","namespace":"openshift-gitops"},"spec":{"applicationInstanceLabelKey":"argo.cntk/instance","applicationSet":{"resources":{"limits":{"cpu":"2","memory":"1Gi"},"requests":{"cpu":"250m","memory":"512Mi"}}},"controller":{"processors":{},"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"250m","memory":"1Gi"}}},"dex":{"openShiftOAuth":true,"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"250m","memory":"128Mi"}}},"grafana":{"enabled":false,"ingress":{"enabled":false},"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"250m","memory":"128Mi"}},"route":{"enabled":false}},"ha":{"enabled":false,"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"250m","memory":"128Mi"}}},"initialSSHKnownHosts":{},"prometheus":{"enabled":false,"ingress":{"enabled":false},"route":{"enabled":false}},"rbac":{},"redis":{"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"250m","memory":"128Mi"}}},"repo":{"resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"250m","memory":"256Mi"}}},"resourceCustomizations":"argoproj.io/Application:\n  ignoreDifferences: |\n    jsonPointers:\n    - /spec/source/targetRevision\n    - /spec/source/repoURL\nargoproj.io/AppProject:\n  ignoreDifferences: |\n    jsonPointers:\n    - /spec/sourceRepos\noperators.coreos.com/OperatorGroup:\n  ignoreDifferences: |\n    jsonPointers:\n    - /metadata/annotations/olm.providedAPIs\n    - /status/lastUpdated\nargoproj.io/Application:\n  health.lua: |\n    hs = {}\n    hs.status = \"Progressing\"\n    hs.message = \"\"\n    if obj.status ~= nil then\n      if obj.status.health ~= nil then\n        hs.status = obj.status.health.status\n        if obj.status.health.message ~= nil then\n          hs.message = obj.status.health.message\n        end\n      end\n    end\n    return hs\noperators.coreos.com/CatalogSource:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.connectionState ~= nil then\n        if obj.status.connectionState.lastObservedState ~= nil then\n          if obj.status.connectionState.lastObservedState == \"READY\" then\n            hs.status = \"Healthy\"\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\noperators.coreos.com/InstallPlan:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Complete\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\noperators.coreos.com/Subscription:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.installedCSV ~= nil then\n        hs.status = \"Healthy\"\n        hs.message = \"CSV Installed\"\n        if obj.status.state ~= nil then\n          hs.message = obj.status.state\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    if obj.status.state ~= nil then\n      hs.message = obj.status.state\n    end\n    return hs\noperator.ibm.com/CommonService:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Succeeded\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\ncore.automation.ibm.com/Cartridge:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      if obj.status.conditions ~= nil then\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"Ready\" and condition.status == \"True\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n          if condition.type == \"Ready\" and condition.reason == \"InProgress\" then\n            hs.status = \"Progressing\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\nzen.cpd.ibm.com/ZenService:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.zenStatus ~= nil then\n        hs.message = obj.status.zenStatus\n        if obj.status.zenStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.zenStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.zenStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nintegration.ibm.com/PlatformNavigator:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      if obj.status.conditions ~= nil then\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"Ready\" and condition.status == \"True\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\nmq.ibm.com/QueueManager:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Running\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nappconnect.ibm.com/IntegrationServer:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Ready\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nappconnect.ibm.com/Dashboard:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Ready\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\napiconnect.ibm.com/APIConnectCluster:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      if obj.status.conditions ~= nil then\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"Error\" and condition.status == \"True\" then\n            hs.status = \"Failed\"\n            hs.message = condition.message\n            return hs\n          end\n          if condition.type == \"Ready\" and condition.status == \"True\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n          if condition.type == \"Pending\" and condition.status == \"True\" then\n            hs.status = \"Progressing\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\ndatapower.ibm.com/DataPowerService:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Running\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\neventstreams.ibm.com/EventStreams:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Ready\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\norchestrator.aiops.ibm.com/Installation:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Running\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.phase == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.failureMessage\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nnoi.ibm.com/NOI:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"OK\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.phase == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.failureMessage\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\ncpd.ibm.com/Ibmcpd:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.controlPlaneStatus ~= nil then\n        hs.message = obj.status.controlPlaneStatus\n        if obj.status.controlPlaneStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.controlPlaneStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.controlPlaneStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\ndb2u.databases.ibm.com/DvService:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.reconcileStatus ~= nil then\n        hs.message = obj.status.reconcileStatus\n        if obj.status.reconcileStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.reconcileStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.reconcileStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nrstudio.cpd.ibm.com/RStudioAddon:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.rstudioStatus ~= nil then\n        hs.message = obj.status.rstudioStatus\n        if obj.status.rstudioStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.rstudioStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.rstudioStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nwkc.cpd.ibm.com/WKC:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.wkcStatus ~= nil then\n        hs.message = obj.status.wkcStatus\n        if obj.status.wkcStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.wkcStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.wkcStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nwml.cpd.ibm.com/WmlBase:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.wmlStatus ~= nil then\n        hs.message = obj.status.wmlStatus\n        if obj.status.wmlStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.wmlStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.wmlStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nwos.cpd.ibm.com/WOService:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.wosStatus ~= nil then\n        hs.message = obj.status.wosStatus\n        if obj.status.wosStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.wosStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.wosStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nws.cpd.ibm.com/WS:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.wsStatus ~= nil then\n        hs.message = obj.status.wsStatus\n        if obj.status.wsStatus == \"Completed\" then\n          hs.status = \"Healthy\"\n        elseif obj.status.wsStatus == \"Failed\" then\n          hs.status = \"Degraded\"\n          hs.message = obj.status.wosStatus\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nicp4a.ibm.com/ICP4ACluster:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      observedGeneration = 0\n      if obj.status.observedGeneration ~= nil then\n        observedGeneration = tonumber(obj.status.observedGeneration)\n      end\n      if obj.status.conditions ~= nil then\n        hs.status = \"Failed\"\n        hs.message = \"\"\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"ReconciliationSuccess\" and observedGeneration == generation then\n            if condition.status == \"True\" then\n              hs.status = \"Healthy\"\n              hs.message = condition.message\n              return hs\n            else\n              hs.status = \"Degraded\"\n              hs.message = condition.message\n              return hs\n            end\n          end\n          if condition.type == \"Running\" and condition.status == \"True\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\nprocessmining.ibm.com/ProcessMining:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      if obj.status.conditions ~= nil then\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"Ready\" and condition.status == \"True\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n          if condition.type == \"Running\" and condition.reason == \"Running\" then\n            hs.status = \"Progressing\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\nisc.ibm.com/CP4SThreatManagement:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      if obj.status.conditions ~= nil then\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"Success\" and condition.status == \"True\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n          if condition.type == \"Success\" and condition.reason == \"InProgress\" then\n            hs.status = \"Progressing\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\noperator.open-cluster-management.io/MultiClusterHub:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Running\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nmachine.openshift.io/obj.sta:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      hs.message = \"Not Ready\"\n      if obj.status.replicas == 0 then\n        hs.status = \"Healthy\"\n        return hs\n      end\n      if obj.status.replicas == obj.status.availableReplicas then\n        hs.status = \"Healthy\"\n      else\n        hs.status = \"Progressing\"\n      end\n      return hs\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nhive.openshift.io/ClusterDeployment:\n  health.lua: |\n    hs = {}\n    generation = obj.metadata.generation\n    if obj.status ~= nil then\n      if obj.status.conditions ~= nil then\n        for i, condition in ipairs(obj.status.conditions) do\n          if condition.type == \"Hibernating\" and condition.status == \"False\" then\n            hs.status = \"Healthy\"\n            hs.message = condition.message\n            return hs\n          end\n        end\n      end\n    end\n    hs.status = \"Progressing\"\n    return hs\nocs.openshift.io/StorageCluster:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      if obj.status.phase ~= nil then\n        hs.message = obj.status.phase\n        if obj.status.phase == \"Ready\" then\n          hs.status = \"Healthy\"\n        else\n          hs.status = \"Progressing\"\n        end\n        return hs\n      end\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\nmachine.openshift.io/MachineSet:\n  health.lua: |\n    hs = {}\n    if obj.status ~= nil then\n      hs.message = \"Not Ready\"\n      if obj.status.replicas == 0 then\n        hs.status = \"Healthy\"\n        return hs\n      end\n      if obj.status.replicas == obj.status.availableReplicas then\n        hs.status = \"Healthy\"\n      else\n        hs.status = \"Progressing\"\n      end\n      return hs\n    end\n    hs.status = \"Progressing\"\n    hs.message = \"Unknown\"\n    return hs\n","resourceExclusions":"- apiGroups:\n  - tekton.dev\n  clusters:\n  - '*'\n  kinds:\n  - TaskRun\n  - PipelineRun\n","server":{"autoscale":{"enabled":false},"grpc":{"ingress":{"enabled":false}},"ingress":{"enabled":false},"resources":{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"125m","memory":"128Mi"}},"route":{"enabled":true},"service":{"type":""}},"tls":{"ca":{}}}}
+  resourceVersion: '1034397'
+  name: openshift-gitops-cntk
+  uid: 
+  creationTimestamp: 
+  generation: 2
+  managedFields:
+    - apiVersion: argoproj.io/v1beta1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+        'f:spec':
+          'f:initialSSHKnownHosts': {}
+          'f:rbac': {}
+          'f:repo':
+            .: {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+          'f:applicationSet':
+            .: {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+          'f:redis':
+            .: {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+          'f:resourceExclusions': {}
+          'f:tls':
+            .: {}
+            'f:ca': {}
+          'f:ha':
+            .: {}
+            'f:enabled': {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+          .: {}
+          'f:grafana':
+            .: {}
+            'f:enabled': {}
+            'f:ingress':
+              .: {}
+              'f:enabled': {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+            'f:route':
+              .: {}
+              'f:enabled': {}
+          'f:controller':
+            .: {}
+            'f:processors': {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+          'f:server':
+            .: {}
+            'f:autoscale':
+              .: {}
+              'f:enabled': {}
+            'f:grpc':
+              .: {}
+              'f:ingress':
+                .: {}
+                'f:enabled': {}
+            'f:ingress':
+              .: {}
+              'f:enabled': {}
+            'f:resources':
+              .: {}
+              'f:limits':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+              'f:requests':
+                .: {}
+                'f:cpu': {}
+                'f:memory': {}
+            'f:route':
+              .: {}
+              'f:enabled': {}
+            'f:service':
+              .: {}
+              'f:type': {}
+          'f:applicationInstanceLabelKey': {}
+          'f:prometheus':
+            .: {}
+            'f:enabled': {}
+            'f:ingress':
+              .: {}
+              'f:enabled': {}
+            'f:route':
+              .: {}
+              'f:enabled': {}
+      manager: kubectl-client-side-apply
+      operation: Update
+      time: '2024-11-13T19:24:34Z'
+    - apiVersion: argoproj.io/v1beta1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:finalizers':
+            .: {}
+            'v:"argoproj.io/finalizer"': {}
+        'f:spec':
+          'f:applicationSet':
+            'f:webhookServer':
+              .: {}
+              'f:ingress':
+                .: {}
+                'f:enabled': {}
+              'f:route':
+                .: {}
+                'f:enabled': {}
+          'f:controller':
+            'f:sharding': {}
+          'f:monitoring':
+            .: {}
+            'f:enabled': {}
+          'f:notifications':
+            .: {}
+            'f:enabled': {}
+      manager: manager
+      operation: Update
+      time: '2024-11-13T19:24:34Z'
+    - apiVersion: argoproj.io/v1beta1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:status':
+          'f:applicationSetController': {}
+          'f:repo': {}
+          'f:redis': {}
+          'f:phase': {}
+          .: {}
+          'f:server': {}
+          'f:applicationController': {}
+          'f:sso': {}
+          'f:host': {}
+      manager: manager
+      operation: Update
+      subresource: status
+      time: '2024-11-14T08:25:37Z'
+  namespace: openshift-gitops
+  finalizers:
+    - argoproj.io/finalizer
+spec:
+  server:
+    autoscale:
+      enabled: false
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 125m
+        memory: 128Mi
+    route:
+      enabled: true
+    service:
+      type: ''
+  grafana:
+    enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+    route:
+      enabled: false
+  monitoring:
+    enabled: false
+  notifications:
+    enabled: false
+  prometheus:
+    enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: false
+  initialSSHKnownHosts: {}
+  applicationInstanceLabelKey: argo.cntk/instance
+  applicationSet:
+    resources:
+      limits:
+        cpu: '2'
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    webhookServer:
+      ingress:
+        enabled: false
+      route:
+        enabled: false
+  rbac: {}
+  repo:
+    resources:
+      limits:
+        cpu: '1'
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  resourceExclusions: |
+    - apiGroups:
+      - tekton.dev
+      clusters:
+      - '*'
+      kinds:
+      - TaskRun
+      - PipelineRun
+  ha:
+    enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  tls:
+    ca: {}
+  redis:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  controller:
+    processors: {}
+    resources:
+      limits:
+        cpu: '2'
+        memory: 4Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi
+    sharding: {}
+
